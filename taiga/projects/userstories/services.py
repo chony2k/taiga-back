@@ -281,6 +281,8 @@ def _get_userstories_statuses(project, queryset):
                 FROM "userstories_userstory"
                      INNER JOIN "projects_project" ON
                                 ("userstories_userstory"."project_id" = "projects_project"."id")
+                     INNER JOIN "epics_relateduserstory" ON
+                                ("userstories_userstory"."id" = "epics_relateduserstory"."user_story_id")
                WHERE {where} AND "userstories_userstory"."status_id" = "projects_userstorystatus"."id")
         FROM "projects_userstorystatus"
        WHERE "projects_userstorystatus"."project_id" = %s
@@ -314,6 +316,7 @@ def _get_userstories_assigned_to(project, queryset):
                 SELECT assigned_to_id,  count(assigned_to_id) count
                   FROM "userstories_userstory"
             INNER JOIN "projects_project" ON ("userstories_userstory"."project_id" = "projects_project"."id")
+            INNER JOIN "epics_relateduserstory" ON ("userstories_userstory"."id" = "epics_relateduserstory"."user_story_id")
                  WHERE {where} AND "userstories_userstory"."assigned_to_id" IS NOT NULL
               GROUP BY assigned_to_id
         )
@@ -333,6 +336,7 @@ def _get_userstories_assigned_to(project, queryset):
                  SELECT NULL user_id, NULL, NULL, count(coalesce(assigned_to_id, -1)) count
                    FROM "userstories_userstory"
              INNER JOIN "projects_project" ON ("userstories_userstory"."project_id" = "projects_project"."id")
+             INNER JOIN "epics_relateduserstory" ON ("userstories_userstory"."id" = "epics_relateduserstory"."user_story_id")
                   WHERE {where} AND "userstories_userstory"."assigned_to_id" IS NULL
                GROUP BY assigned_to_id
     """.format(where=where)
@@ -376,6 +380,7 @@ def _get_userstories_owners(project, queryset):
                        count(coalesce("userstories_userstory"."owner_id", -1)) count
                   FROM "userstories_userstory"
             INNER JOIN "projects_project" ON ("userstories_userstory"."project_id" = "projects_project"."id")
+            INNER JOIN "epics_relateduserstory" ON ("userstories_userstory"."id" = "epics_relateduserstory"."user_story_id")
                  WHERE {where}
               GROUP BY "userstories_userstory"."owner_id"
         )
@@ -430,6 +435,8 @@ def _get_userstories_tags(project, queryset):
                                   FROM userstories_userstory
                             INNER JOIN projects_project
                                         ON (userstories_userstory.project_id = projects_project.id)
+                            INNER JOIN "epics_relateduserstory"
+                                        ON ("userstories_userstory"."id" = "epics_relateduserstory"."user_story_id")
                                  WHERE {where}) tags
                   GROUP BY tag),
              project_tags AS (
@@ -461,7 +468,6 @@ def _get_userstories_epics(project, queryset):
     queryset_where_tuple = queryset.query.where.as_sql(compiler, connection)
     where = queryset_where_tuple[0]
     where_params = queryset_where_tuple[1]
-
     extra_sql = """
    WITH counters AS (
            SELECT "epics_relateduserstory"."epic_id" AS "epic_id",
